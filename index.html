@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QQ Dessert — Order Aggregator</title>
+    <meta name="description" content="QQ Dessert internal order aggregation tool. Import Excel files to calculate total orders per zone.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <style>
+        :root {
+            --bg:        #F5F4F2;
+            --surface:   #FFFFFF;
+            --border:    #E2E0DC;
+            --border-lt: #EDECEA;
+            --text-1:    #1A1210;
+            --text-2:    #5A5350;
+            --text-3:    #9A9694;
+            --accent:    #8B1A0E;
+            --accent-bg: #FDF2F1;
+            --green:     #16A34A;
+            --green-bg:  #F0FDF4;
+            --success:   #16A34A;
+            --error:     #DC2626;
+            --radius:    10px;
+            --shadow:    0 1px 2px rgba(0,0,0,.05), 0 0 0 1px rgba(0,0,0,.04);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            font-feature-settings: 'tnum' 1; /* tabular nums for better number alignment */
+            background: var(--bg);
+            color: var(--text-1);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Loading ─────────────────────────────── */
+        #loading-overlay {
+            position: fixed; inset: 0;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+        #loading-overlay.active { display: flex; }
+        .loader-ring {
+            width: 36px; height: 36px;
+            border: 2.5px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loader-text { font-size: .875rem; font-weight: 600; color: var(--text-2); }
+
+        /* ── Toast ───────────────────────────────── */
+        #toast-container {
+            position: fixed; bottom: 1.25rem; right: 1.25rem;
+            z-index: 200;
+            display: flex; flex-direction: column; gap: .5rem;
+            pointer-events: none;
+        }
+        .toast {
+            display: inline-flex; align-items: center; gap: .5rem;
+            padding: .625rem 1rem;
+            border-radius: var(--radius);
+            font-size: .8125rem; font-weight: 600;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,.15);
+            transform: translateY(8px); opacity: 0;
+            transition: transform .25s ease, opacity .25s ease;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.hide { transform: translateY(8px); opacity: 0; }
+        .toast.success { background: var(--success); }
+        .toast.error   { background: var(--error); }
+
+        /* ── Page Header ─────────────────────────── */
+        .page-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1.25rem 2rem;
+        }
+        .page-header-inner {
+            max-width: 1080px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: .875rem;
+        }
+        .logo-mark {
+            width: 40px; height: 40px;
+            border-radius: 8px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .logo-mark img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .header-text h1 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-1);
+            line-height: 1.3;
+        }
+        .header-text p {
+            font-size: .8125rem;
+            color: var(--text-3);
+            margin-top: .1rem;
+        }
+
+        /* ── Main Layout ─────────────────────────── */
+        .main {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+        }
+
+        /* ── Card ────────────────────────────────── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        /* ── Upload Section ──────────────────────── */
+        .upload-card { padding: 1.5rem; margin-bottom: 1.5rem; }
+
+        .drop-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: .625rem;
+            width: 100%;
+            min-height: 148px;
+            border: 1.5px dashed var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            background: var(--bg);
+            transition: border-color .15s, background .15s;
+        }
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: var(--accent);
+            background: var(--accent-bg);
+        }
+        .drop-zone input { display: none; }
+
+        .drop-icon {
+            width: 40px; height: 40px;
+            border-radius: 8px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .drop-icon svg { width: 20px; height: 20px; color: var(--text-2); }
+        .drop-zone:hover .drop-icon, .drop-zone.drag-over .drop-icon {
+            border-color: var(--accent);
+            background: #FDF2F1;
+        }
+        .drop-zone:hover .drop-icon svg, .drop-zone.drag-over .drop-icon svg {
+            color: var(--accent);
+        }
+        .drop-zone:hover .drop-icon svg, .drop-zone.drag-over .drop-icon svg {
+            color: var(--accent);
+        }
+
+        .drop-text { text-align: center; }
+        .drop-text strong { display: block; font-size: .875rem; font-weight: 600; color: var(--text-1); }
+        .drop-text small   { font-size: .775rem; color: var(--text-3); margin-top: .125rem; display: block; }
+
+        /* ── File list ───────────────────────────── */
+        #file-list { margin-top: 1rem; font-size: .8125rem; color: var(--text-2); max-height: 120px; overflow-y: auto; }
+        .fl-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .375rem; }
+        .fl-header strong { font-weight: 600; color: var(--text-1); }
+        .btn-clear {
+            font-size: .75rem; font-weight: 600;
+            color: var(--error); background: none;
+            border: none; cursor: pointer;
+            padding: .2rem .5rem; border-radius: 5px;
+            transition: background .1s;
+        }
+        .btn-clear:hover { background: #FEF2F2; }
+        .fl-item {
+            display: flex; align-items: center; gap: .375rem;
+            padding: .25rem 0;
+            color: var(--text-2);
+            border-top: 1px solid var(--border-lt);
+            font-size: .775rem;
+        }
+        .fl-item:first-of-type { border-top: none; }
+        .fl-item svg { flex-shrink: 0; color: var(--text-3); }
+
+        /* ── Action buttons ──────────────────────── */
+        .btn-row { display: flex; gap: .75rem; margin-top: 1.25rem; }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: .4375rem;
+            font-family: 'Inter', sans-serif;
+            font-size: .875rem; font-weight: 600;
+            border: none; border-radius: 8px;
+            cursor: pointer;
+            padding: .6875rem 1.25rem;
+            transition: background .15s, box-shadow .15s, transform .1s;
+        }
+        .btn:active { transform: scale(.985); }
+        .btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
+
+        .btn-primary {
+            flex: 1;
+            background: var(--text-1);
+            color: #fff;
+        }
+        .btn-primary:hover:not(:disabled) { background: #2A2D3E; }
+
+        .btn-export {
+            background: var(--green);
+            color: #fff;
+            display: none;
+        }
+        .btn-export:hover { background: #15803D; }
+        .btn-export.visible { display: inline-flex; }
+
+        /* ── Results ─────────────────────────────── */
+        #results { display: none; }
+        #results.visible { display: block; }
+
+        /* ── Stat strip ──────────────────────────── */
+        .stat-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: .75rem;
+            margin-bottom: 1.5rem;
+        }
+        @media (max-width: 640px) { .stat-strip { grid-template-columns: repeat(2, 1fr); } }
+
+        .stat-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.125rem 1.25rem;
+            box-shadow: var(--shadow);
+        }
+        .stat-label {
+            font-size: .6875rem;
+            font-weight: 600;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: var(--text-3);
+            margin-bottom: .5rem;
+        }
+        .stat-num {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text-1);
+            line-height: 1;
+            letter-spacing: -.02em;
+            font-variant-numeric: tabular-nums;
+        }
+        /* accent colors */
+        .stat-box[data-z="a"] .stat-num { color: var(--accent); }
+        .stat-box[data-z="b"] .stat-num { color: var(--green); }
+        .stat-box[data-z="s"] .stat-num { color: #7C3AED; }
+
+        /* ── Divider label ───────────────────────── */
+        .divider {
+            display: flex; align-items: center; gap: .875rem;
+            margin: 0 0 1rem;
+        }
+        .divider hr { flex: 1; border: none; border-top: 1px solid var(--border); }
+        .divider span {
+            font-size: .6875rem; font-weight: 700;
+            letter-spacing: .08em; text-transform: uppercase;
+            color: var(--text-3);
+            white-space: nowrap;
+        }
+
+        /* ── Zone grid ───────────────────────────── */
+        .zone-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        @media (max-width: 700px) { .zone-grid { grid-template-columns: 1fr; } }
+
+        /* ── Table card ──────────────────────────── */
+        .tcard {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            margin-bottom: 1rem;
+        }
+        .tcard-head {
+            padding: .875rem 1.125rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .tcard-head-left { display: flex; align-items: center; gap: .625rem; }
+
+        /* zone pill */
+        .zone-pill {
+            font-size: .6875rem; font-weight: 700;
+            letter-spacing: .06em;
+            padding: .25rem .625rem;
+            border-radius: 999px;
+        }
+        .zone-pill-a  { background: var(--accent-bg); color: var(--accent); }
+        .zone-pill-b  { background: var(--green-bg);  color: var(--green);  }
+        .zone-pill-gt { background: #F5F0FF; color: #7C3AED; }
+
+        .tcard-title { font-size: .9375rem; font-weight: 700; color: var(--text-1); }
+        .tcard-sub   { font-size: .725rem; color: var(--text-3); margin-top: .1rem; }
+
+        .item-count {
+            font-size: .75rem; font-weight: 600;
+            color: var(--text-3);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: .2rem .625rem;
+        }
+
+        /* ── Data table ──────────────────────────── */
+        .dtable { width: 100%; border-collapse: collapse; }
+        .dtable thead tr { border-bottom: 1px solid var(--border); background: var(--bg); }
+        .dtable thead th {
+            padding: .5rem 1rem;
+            font-size: .6875rem; font-weight: 700;
+            letter-spacing: .07em; text-transform: uppercase;
+            color: var(--text-3);
+        }
+        .dtable th.c-no   { width: 40px; text-align: center; }
+        .dtable th.c-name { text-align: left; }
+        .dtable th.c-qty  { text-align: right; width: 120px; }
+
+        .dtable tbody tr {
+            border-bottom: 1px solid var(--border-lt);
+            transition: background .1s;
+        }
+        .dtable tbody tr:last-child { border-bottom: none; }
+        .dtable tbody tr:hover { background: var(--bg); }
+        .dtable td { padding: .625rem 1rem; vertical-align: middle; }
+
+        .c-no { text-align: center; }
+        .row-no {
+            font-size: .6875rem; font-weight: 700;
+            color: var(--text-3);
+            width: 20px; height: 20px;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        /* top 3 rank dot */
+        .row-no.top { color: #92400E; background: #FEF3C7; border-radius: 50%; }
+
+        .row-name { font-size: .875rem; font-weight: 500; color: var(--text-1); }
+
+        /* Qty cell - most important: clean and readable */
+        .c-qty { text-align: right; }
+        .qty-block { display: flex; flex-direction: column; align-items: flex-end; gap: .3rem; }
+        .qty-num {
+            font-size: 1rem; font-weight: 700;
+            color: var(--text-1);
+            letter-spacing: -.01em;
+            font-variant-numeric: tabular-nums;
+        }
+        .qty-bar { width: 80px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+        .qty-bar-fill {
+            height: 100%; border-radius: 2px;
+            transform: scaleX(0); transform-origin: left;
+            transition: transform .6s cubic-bezier(.4,0,.2,1);
+        }
+
+        /* empty state */
+        .empty-row td {
+            text-align: center;
+            padding: 2rem;
+            font-size: .875rem;
+            color: var(--text-3);
+            font-style: italic;
+        }
+
+        /* ── Scrollbar ───────────────────────────── */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+
+        /* ── Responsive ──────────────────────────── */
+        @media (max-width: 500px) {
+            .page-header { padding: 1rem 1.25rem; }
+            .main { padding: 1.25rem 1rem 3rem; }
+            .upload-card { padding: 1.125rem; }
+            .btn-row { flex-direction: column; }
+            .stat-strip { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-overlay" role="status" aria-live="polite">
+    <div class="loader-ring"></div>
+    <p class="loader-text">Processing files&hellip;</p>
+</div>
+
+<!-- Toasts -->
+<div id="toast-container" aria-live="assertive"></div>
+
+<!-- Page Header -->
+<header class="page-header">
+    <div class="page-header-inner">
+        <div class="logo-mark">
+            <img src="453506600_911217081039901_5200853660072481886_n.jpg" alt="QQ Dessert logo">
+        </div>
+        <div class="header-text">
+            <h1>QQ Dessert — Order Aggregator</h1>
+            <p>Import Excel files to calculate total orders per zone</p>
+        </div>
+    </div>
+</header>
+
+<main class="main">
+
+    <!-- Upload Card -->
+    <div class="card upload-card">
+        <label id="drop-zone" class="drop-zone" for="file-input" tabindex="0" role="button" aria-label="Upload Excel files">
+            <div class="drop-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M6.75 19.5a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
+                </svg>
+            </div>
+            <div class="drop-text">
+                <strong>Drop files here, or click to browse</strong>
+                <small>Supports .xlsx, .xls, .csv &mdash; multiple files</small>
+            </div>
+            <input id="file-input" type="file" multiple accept=".xlsx,.xls,.csv" aria-hidden="true">
+        </label>
+
+        <div id="file-list"></div>
+
+        <div class="btn-row">
+            <button id="calculate-btn" class="btn btn-primary" aria-label="Calculate aggregation">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16 2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3Z" />
+                </svg>
+                Calculate Aggregation
+            </button>
+            <button id="export-report-btn" class="btn btn-export" aria-label="Export Excel report">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Export Report
+            </button>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results">
+
+        <!-- Stats -->
+        <div class="stat-strip">
+            <div class="stat-box" data-z="t">
+                <div class="stat-label">ยอดรวม (ชิ้น)</div>
+                <div class="stat-num" id="stat-total">0</div>
+            </div>
+            <div class="stat-box" data-z="a">
+                <div class="stat-label">Zone A</div>
+                <div class="stat-num" id="stat-zone-a">0</div>
+            </div>
+            <div class="stat-box" data-z="b">
+                <div class="stat-label">Zone B</div>
+                <div class="stat-num" id="stat-zone-b">0</div>
+            </div>
+            <div class="stat-box" data-z="s">
+                <div class="stat-label">รายการ (SKU)</div>
+                <div class="stat-num" id="stat-sku">0</div>
+            </div>
+        </div>
+
+        <!-- Zone A & B -->
+        <div class="divider"><hr><span>By Zone</span><hr></div>
+
+        <div class="zone-grid">
+            <!-- Zone A -->
+            <div class="tcard">
+                <div class="tcard-head">
+                    <div class="tcard-head-left">
+                        <span class="zone-pill zone-pill-a">Zone A</span>
+                        <div>
+                            <div class="tcard-title">Zone A</div>
+                            <div class="tcard-sub">THL &middot; COM &middot; CTW &middot; SCS &middot; KPW &middot; CTT</div>
+                        </div>
+                    </div>
+                    <span class="item-count" id="zone-a-count">—</span>
+                </div>
+                <table class="dtable" aria-label="Zone A">
+                    <thead><tr>
+                        <th class="c-no">#</th>
+                        <th class="c-name">Menu</th>
+                        <th class="c-qty">Qty</th>
+                    </tr></thead>
+                    <tbody id="zone-a-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Zone B -->
+            <div class="tcard">
+                <div class="tcard-head">
+                    <div class="tcard-head-left">
+                        <span class="zone-pill zone-pill-b">Zone B</span>
+                        <div>
+                            <div class="tcard-title">Zone B</div>
+                            <div class="tcard-sub">LPO &middot; RMN &middot; EVL &middot; CPK &middot; BTV &middot; CWN &middot; FNI &middot; CWV</div>
+                        </div>
+                    </div>
+                    <span class="item-count" id="zone-b-count">—</span>
+                </div>
+                <table class="dtable" aria-label="Zone B">
+                    <thead><tr>
+                        <th class="c-no">#</th>
+                        <th class="c-name">Menu</th>
+                        <th class="c-qty">Qty</th>
+                    </tr></thead>
+                    <tbody id="zone-b-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Grand Total -->
+        <div class="divider"><hr><span>Grand Total</span><hr></div>
+
+        <div class="tcard">
+            <div class="tcard-head">
+                <div class="tcard-head-left">
+                    <span class="zone-pill zone-pill-gt">All Zones</span>
+                    <div>
+                        <div class="tcard-title">Grand Total</div>
+                        <div class="tcard-sub">Zone A + Zone B combined</div>
+                    </div>
+                </div>
+                <span class="item-count" id="total-count">—</span>
+            </div>
+            <table class="dtable" aria-label="Grand total">
+                <thead><tr>
+                    <th class="c-no">#</th>
+                    <th class="c-name">Menu</th>
+                    <th class="c-qty">Qty</th>
+                </tr></thead>
+                <tbody id="total-body"></tbody>
+            </table>
+        </div>
+
+    </div><!-- /results -->
+</main>
+
+<script>
+    /* ── DOM ────────────────────────────── */
+    const dropZone        = document.getElementById('drop-zone');
+    const fileInput       = document.getElementById('file-input');
+    const fileListEl      = document.getElementById('file-list');
+    const calculateBtn    = document.getElementById('calculate-btn');
+    const exportReportBtn = document.getElementById('export-report-btn');
+    const resultsDiv      = document.getElementById('results');
+    const loadingOverlay  = document.getElementById('loading-overlay');
+
+    let selectedFiles = [];
+    let globalRawData = [];
+
+    /* ── Zone Data ──────────────────────── */
+    const ZONE_MAPPING = {
+        'THONG LO': 'THL', 'THL': 'THL',
+        'THE COMMONS SALADAENG': 'COM', 'COM': 'COM',
+        'CENTRAL WORLD': 'CTW', 'CTW': 'CTW',
+        'SEACON SQUARE': 'SCS', 'SCS': 'SCS',
+        'KING POWER': 'KPW', 'KPW': 'KPW',
+        'CENTRAL RAMA3': 'CTT', 'CTT': 'CTT',
+        'CENTRAL LAPRAO': 'LPO', 'LPO': 'LPO',
+        'CENTRAL RAMA9': 'RMN', 'RMN': 'RMN',
+        'CENTRAL EASTVILLE': 'EVL', 'EVL': 'EVL',
+        'CENTRAL PINKLAO': 'CPK', 'CPK': 'CPK',
+        'BOONTHAVORN': 'BTV', 'BTV': 'BTV',
+        'CENTRAL CHAENGWATTANA': 'CWN', 'CWN': 'CWN',
+        'FASHION ISLAND': 'FNI', 'FNI': 'FNI',
+        'CENTRAL WESTVILLE': 'CWV', 'CWV': 'CWV'
+    };
+    const ZONES = {
+        'A': ['THL', 'COM', 'CTW', 'SCS', 'KPW', 'CTT'],
+        'B': ['LPO', 'RMN', 'EVL', 'CPK', 'BTV', 'CWN', 'FNI', 'CWV']
+    };
+
+    /* ── Toast ──────────────────────────── */
+    function showToast(msg, type = 'success') {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        const icon = type === 'success'
+            ? '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>'
+            : '<svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>';
+        t.className = 'toast ' + type;
+        t.innerHTML = icon + '<span>' + msg + '</span>';
+        c.appendChild(t);
+        requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
+        setTimeout(() => { t.classList.remove('show'); t.classList.add('hide'); setTimeout(() => t.remove(), 300); }, 3000);
+    }
+
+    /* ── Counter animation ──────────────── */
+    function animateCounter(el, target, dur = 700) {
+        const t0 = performance.now();
+        const from = parseInt(el.textContent.replace(/,/g, '')) || 0;
+        const run = now => {
+            const p = Math.min((now - t0) / dur, 1);
+            const e = 1 - Math.pow(1 - p, 3);
+            el.textContent = Math.round(from + (target - from) * e).toLocaleString();
+            if (p < 1) requestAnimationFrame(run);
+        };
+        requestAnimationFrame(run);
+    }
+
+    /* ── Drag & drop ────────────────────── */
+    ['dragenter','dragover','dragleave','drop'].forEach(ev => {
+        dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
+        document.body.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
+    });
+    ['dragenter','dragover'].forEach(ev => dropZone.addEventListener(ev, () => dropZone.classList.add('drag-over')));
+    ['dragleave','drop'].forEach(ev => dropZone.addEventListener(ev, () => dropZone.classList.remove('drag-over')));
+    dropZone.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+    fileInput.addEventListener('change', e => handleFiles(e.target.files));
+    dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+
+    /* ── File handling ──────────────────── */
+    function handleFiles(files) {
+        const valid = Array.from(files).filter(f => f.name.match(/\.(xlsx|xls|csv)$/i) && !f.name.startsWith('~$'));
+        const newFiles = valid.filter(nf => !selectedFiles.some(ef => ef.name === nf.name && ef.size === nf.size));
+        selectedFiles = [...selectedFiles, ...newFiles];
+        renderFileList();
+    }
+
+    function renderFileList() {
+        if (selectedFiles.length === 0) {
+            fileListEl.innerHTML = '<span style="color:var(--error);font-size:.775rem;">No valid files selected.</span>';
+            return;
+        }
+        const fIcon = '<svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>';
+        const hdr = '<div class="fl-header"><strong>Ready: ' + selectedFiles.length + ' file' + (selectedFiles.length > 1 ? 's' : '') + '</strong><button class="btn-clear" onclick="clearFiles()">Clear</button></div>';
+        const items = selectedFiles.map(f => '<div class="fl-item">' + fIcon + '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + f.name + '</span></div>').join('');
+        fileListEl.innerHTML = hdr + items;
+    }
+
+    window.clearFiles = function() {
+        selectedFiles = []; globalRawData = []; fileInput.value = '';
+        fileListEl.innerHTML = '';
+        resultsDiv.classList.remove('visible');
+        exportReportBtn.classList.remove('visible');
+        showToast('Cleared');
+    };
+
+    /* ── Calculate ──────────────────────── */
+    calculateBtn.addEventListener('click', async () => {
+        if (selectedFiles.length === 0) { showToast('Please select files first', 'error'); return; }
+        const agg = { 'A': {}, 'B': {}, 'TOTAL': {} };
+        globalRawData = [];
+        calculateBtn.disabled = true;
+        loadingOverlay.classList.add('active');
+        await new Promise(r => setTimeout(r, 60));
+        try {
+            for (const file of selectedFiles) {
+                const data = await readFile(file);
+                globalRawData = globalRawData.concat(data);
+                processData(data, agg);
+            }
+            renderTable('zone-a-body', agg.A, '#2563EB');
+            renderTable('zone-b-body', agg.B, '#16A34A');
+            renderTable('total-body',  agg.TOTAL, '#7C3AED');
+
+            document.getElementById('zone-a-count').textContent = Object.keys(agg.A).length + ' items';
+            document.getElementById('zone-b-count').textContent = Object.keys(agg.B).length + ' items';
+            document.getElementById('total-count').textContent  = Object.keys(agg.TOTAL).length + ' items';
+
+            resultsDiv.classList.add('visible');
+            exportReportBtn.classList.add('visible');
+
+            let tot = 0, zA = 0, zB = 0;
+            Object.values(agg.TOTAL).forEach(i => tot += i.qty);
+            Object.values(agg.A).forEach(i => zA += i.qty);
+            Object.values(agg.B).forEach(i => zB += i.qty);
+
+            animateCounter(document.getElementById('stat-total'),  tot);
+            animateCounter(document.getElementById('stat-zone-a'), zA);
+            animateCounter(document.getElementById('stat-zone-b'), zB);
+            animateCounter(document.getElementById('stat-sku'),    Object.keys(agg.TOTAL).length);
+
+            showToast('Processed ' + selectedFiles.length + ' file' + (selectedFiles.length > 1 ? 's' : '') + ' successfully');
+            setTimeout(() => resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+            setTimeout(() => document.querySelectorAll('.qty-bar-fill').forEach(b => b.style.transform = 'scaleX(1)'), 180);
+
+        } catch (err) {
+            console.error(err);
+            showToast('Error: ' + err.message, 'error');
+        } finally {
+            calculateBtn.disabled = false;
+            loadingOverlay.classList.remove('active');
+        }
+    });
+
+    /* ── Read file ──────────────────────── */
+    function readFile(file) {
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = e => {
+                try {
+                    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' }));
+                } catch (err) { reject(err); }
+            };
+            r.onerror = reject;
+            r.readAsArrayBuffer(file);
+        });
+    }
+
+    /* ── Process data ───────────────────── */
+    function processData(rows, agg) {
+        rows.forEach(row => {
+            const itemCode  = row['ItemCode'];
+            const itemDesc  = row['ItemDesc'];
+            const qty       = parseFloat(row['Qty']) || 0;
+            const rawBranch = (row['To'] || '').toString().trim().toUpperCase();
+            if (!itemCode || qty === 0) return;
+            let branchCode = null, zone = null;
+            for (const [key, code] of Object.entries(ZONE_MAPPING)) {
+                if (rawBranch.includes(key)) { branchCode = code; zone = ZONES.A.includes(code) ? 'A' : 'B'; break; }
+            }
+            if (!agg.TOTAL[itemCode]) agg.TOTAL[itemCode] = { desc: itemDesc, qty: 0 };
+            agg.TOTAL[itemCode].qty += qty;
+            if (zone) {
+                if (!agg[zone][itemCode]) agg[zone][itemCode] = { desc: itemDesc, qty: 0 };
+                agg[zone][itemCode].qty += qty;
+            }
+        });
+    }
+
+    /* ── Render table ───────────────────── */
+    function renderTable(bodyId, data, barColor) {
+        const body = document.getElementById(bodyId);
+        body.innerHTML = '';
+        const sorted = Object.values(data).sort((a, b) => b.qty - a.qty);
+        if (sorted.length === 0) {
+            body.innerHTML = '<tr class="empty-row"><td colspan="3">No data for this zone.</td></tr>';
+            return;
+        }
+        const max = sorted[0].qty;
+        sorted.forEach((item, i) => {
+            const pct = max > 0 ? (item.qty / max) * 100 : 0;
+            const tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td class="c-no"><span class="row-no' + (i < 3 ? ' top' : '') + '">' + (i + 1) + '</span></td>' +
+                '<td class="row-name">' + item.desc + '</td>' +
+                '<td class="c-qty"><div class="qty-block">' +
+                    '<span class="qty-num">' + item.qty.toLocaleString() + '</span>' +
+                    '<div class="qty-bar"><div class="qty-bar-fill" style="width:' + pct + '%;background:' + barColor + ';transform:scaleX(0);"></div></div>' +
+                '</div></td>';
+            body.appendChild(tr);
+        });
+    }
+
+    /* ── Export ─────────────────────────── */
+    exportReportBtn.addEventListener('click', () => {
+        if (globalRawData.length === 0) return;
+        try {
+            const wb = XLSX.utils.book_new();
+            const dateStr = new Date().toLocaleDateString('en-GB');
+            const BORDER = { top:{style:'thin',color:{rgb:'000000'}}, bottom:{style:'thin',color:{rgb:'000000'}}, left:{style:'thin',color:{rgb:'000000'}}, right:{style:'thin',color:{rgb:'000000'}} };
+            const S_HEADER = { font:{bold:true,sz:12}, fill:{fgColor:{rgb:'FFC000'}}, alignment:{horizontal:'center',vertical:'center'}, border:BORDER };
+            const S_TITLE  = { font:{bold:true,sz:16}, alignment:{horizontal:'left'} };
+            const S_CELL   = { border:BORDER, alignment:{horizontal:'center'} };
+            const S_TEXT   = { border:BORDER, alignment:{horizontal:'left'} };
+            const S_TOTAL  = { font:{bold:true}, fill:{fgColor:{rgb:'FFF2CC'}}, border:BORDER, alignment:{horizontal:'center'} };
+
+            function buildSheet(sheetName, branches, titleText) {
+                const itemsMap = {};
+                const allBranches = branches === 'ALL' ? [...ZONES.A, ...ZONES.B] : branches;
+                globalRawData.forEach(row => {
+                    const rawBranch = (row['To'] || '').toString().trim().toUpperCase();
+                    const qty = parseFloat(row['Qty']) || 0;
+                    const codeRaw = row['ItemCode'] || '';
+                    const desc = row['ItemDesc'] || '';
+                    if (!codeRaw || qty === 0) return;
+                    let itemCode = codeRaw.toString();
+                    if (itemCode.includes('-')) itemCode = itemCode.split('-')[1];
+                    let branchCode = null;
+                    for (const [key, code] of Object.entries(ZONE_MAPPING)) { if (rawBranch.includes(key)) { branchCode = code; break; } }
+                    if (branchCode && (branches === 'ALL' || branches.includes(branchCode))) {
+                        if (!itemsMap[itemCode]) { itemsMap[itemCode] = { desc, branches: {}, total: 0 }; allBranches.forEach(b => itemsMap[itemCode].branches[b] = 0); }
+                        itemsMap[itemCode].branches[branchCode] += qty;
+                        itemsMap[itemCode].total += qty;
+                    }
+                });
+                const wsData = [[{v:titleText,s:S_TITLE}],[{v:dateStr,s:{font:{sz:10}}}],[]];
+                const hdr = [{v:'\u0e25\u0e33\u0e14\u0e31\u0e1a',s:S_HEADER},{v:'\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23',s:S_HEADER},{v:'\u0e23\u0e2b\u0e31\u0e2a\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32',s:S_HEADER}];
+                if (branches === 'ALL') { hdr.push({v:'\u0e23\u0e27\u0e21\u0e17\u0e31\u0e49\u0e07\u0e2b\u0e21\u0e14',s:S_HEADER}); }
+                else { allBranches.forEach(b => hdr.push({v:b,s:S_HEADER})); hdr.push({v:'\u0e23\u0e27\u0e21 '+sheetName.replace('Zone ',''),s:S_HEADER}); }
+                wsData.push(hdr);
+                let idx = 1;
+                Object.keys(itemsMap).sort().forEach(code => {
+                    const item = itemsMap[code];
+                    const row = [{v:idx++,s:S_CELL},{v:item.desc,s:S_TEXT},{v:code,s:S_CELL}];
+                    if (branches !== 'ALL') { allBranches.forEach(b => { const val = item.branches[b]; row.push({v:val===0?'-':val.toFixed(2),s:S_CELL}); }); }
+                    row.push({v:item.total.toFixed(2),s:S_TOTAL});
+                    wsData.push(row);
+                });
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                const cols = [{wch:5},{wch:25},{wch:12}];
+                if (branches === 'ALL') { cols.push({wch:15}); } else { allBranches.forEach(() => cols.push({wch:8})); cols.push({wch:10}); }
+                ws['!cols'] = cols;
+                return ws;
+            }
+
+            XLSX.utils.book_append_sheet(wb, buildSheet('Zone A',      ZONES.A, '\u0e41\u0e1a\u0e1a\u0e1f\u0e2d\u0e23\u0e4c\u0e21\u0e43\u0e1a\u0e2a\u0e31\u0e48\u0e07/\u0e2a\u0e48\u0e07\u0e02\u0e2d\u0e07\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e32\u0e02\u0e32\u0e23\u0e32\u0e22\u0e27\u0e31\u0e19 (QQ Dessert) \u0e42\u0e0b\u0e19 A'), 'Zone A');
+            XLSX.utils.book_append_sheet(wb, buildSheet('Zone B',      ZONES.B, '\u0e41\u0e1a\u0e1a\u0e1f\u0e2d\u0e23\u0e4c\u0e21\u0e43\u0e1a\u0e2a\u0e31\u0e48\u0e07/\u0e2a\u0e48\u0e07\u0e02\u0e2d\u0e07\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e32\u0e02\u0e32\u0e23\u0e32\u0e22\u0e27\u0e31\u0e19 (QQ Dessert) \u0e42\u0e0b\u0e19 B'), 'Zone B');
+            XLSX.utils.book_append_sheet(wb, buildSheet('Grand Total', 'ALL',   '\u0e41\u0e1a\u0e1a\u0e1f\u0e2d\u0e23\u0e4c\u0e21\u0e43\u0e1a\u0e2a\u0e31\u0e48\u0e07/\u0e2a\u0e48\u0e07\u0e02\u0e2d\u0e07\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e32\u0e02\u0e32\u0e23\u0e32\u0e22\u0e27\u0e31\u0e19 (QQ Dessert) \u0e23\u0e27\u0e21\u0e17\u0e38\u0e01\u0e2a\u0e32\u0e02\u0e32'), 'Grand Total');
+            XLSX.writeFile(wb, 'QQ_Dessert_Order_Report_' + new Date().toISOString().slice(0,10) + '.xlsx');
+            showToast('Report exported successfully!');
+        } catch (err) {
+            console.error(err);
+            showToast('Export failed: ' + err.message, 'error');
+        }
+    });
+</script>
+</body>
+</html>

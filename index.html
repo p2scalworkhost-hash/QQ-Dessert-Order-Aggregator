@@ -582,20 +582,34 @@
 
     /* ── Zone Data ──────────────────────── */
     const ZONE_MAPPING = {
-        'THONG LO': 'THL', 'THL': 'THL',
-        'THE COMMONS SALADAENG': 'COM', 'COM': 'COM',
-        'CENTRAL WORLD': 'CTW', 'CTW': 'CTW',
-        'SEACON SQUARE': 'SCS', 'SCS': 'SCS',
-        'KING POWER': 'KPW', 'KPW': 'KPW',
-        'CENTRAL RAMA3': 'CTT', 'CTT': 'CTT',
-        'CENTRAL LAPRAO': 'LPO', 'LPO': 'LPO',
-        'CENTRAL RAMA9': 'RMN', 'RMN': 'RMN',
-        'CENTRAL EASTVILLE': 'EVL', 'EVL': 'EVL',
-        'CENTRAL PINKLAO': 'CPK', 'CPK': 'CPK',
-        'BOONTHAVORN': 'BTV', 'BTV': 'BTV',
-        'CENTRAL CHAENGWATTANA': 'CWN', 'CWN': 'CWN',
-        'FASHION ISLAND': 'FNI', 'FNI': 'FNI',
-        'CENTRAL WESTVILLE': 'CWV', 'CWV': 'CWV'
+        // THL
+        'THONG LO': 'THL', 'THONG LOR': 'THL', 'THONGLOR': 'THL', 'THL': 'THL',
+        // COM
+        'THE COMMONS SALADAENG': 'COM', 'THE COMMONS': 'COM', 'COMMONS': 'COM', 'SALADAENG': 'COM', 'COM': 'COM',
+        // CTW
+        'CENTRAL WORLD': 'CTW', 'CENTRALWORLD': 'CTW', 'CTW': 'CTW',
+        // SCS
+        'SEACON SQUARE': 'SCS', 'SEACON': 'SCS', 'SCS': 'SCS',
+        // KPW
+        'KING POWER': 'KPW', 'KINGPOWER': 'KPW', 'KPW': 'KPW',
+        // CTT
+        'CENTRAL RAMA 3': 'CTT', 'CENTRAL RAMA3': 'CTT', 'RAMA 3': 'CTT', 'RAMA3': 'CTT', 'CTT': 'CTT',
+        // LPO
+        'CENTRAL LAPRAO': 'LPO', 'CENTRAL LADPRAO': 'LPO', 'LPO': 'LPO',
+        // RMN
+        'CENTRAL RAMA 9': 'RMN', 'CENTRAL RAMA9': 'RMN', 'RAMA 9': 'RMN', 'RAMA9': 'RMN', 'RMN': 'RMN',
+        // EVL
+        'CENTRAL EASTVILLE': 'EVL', 'EASTVILLE': 'EVL', 'EVL': 'EVL',
+        // CPK
+        'CENTRAL PINKLAO': 'CPK', 'PINKLAO': 'CPK', 'CPK': 'CPK',
+        // BTV
+        'BOONTHAVORN': 'BTV', 'BOON THAVORN': 'BTV', 'BTV': 'BTV',
+        // CWN
+        'CENTRAL CHAENGWATTANA': 'CWN', 'CENTRAL CHAENG WATTANA': 'CWN', 'CHAENGWATTANA': 'CWN', 'CWN': 'CWN',
+        // FNI
+        'FASHION ISLAND': 'FNI', 'FASHION': 'FNI', 'FNI': 'FNI',
+        // CWV
+        'CENTRAL WESTVILLE': 'CWV', 'WESTVILLE': 'CWV', 'CWV': 'CWV'
     };
     const ZONES = {
         'A': ['THL', 'COM', 'CTW', 'SCS', 'KPW', 'CTT'],
@@ -641,11 +655,13 @@
     dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
 
     /* ── File handling ──────────────────── */
-    function handleFiles(files) {
+    async function handleFiles(files) {
         const valid = Array.from(files).filter(f => f.name.match(/\.(xlsx|xls|csv)$/i) && !f.name.startsWith('~$'));
         const newFiles = valid.filter(nf => !selectedFiles.some(ef => ef.name === nf.name && ef.size === nf.size));
+        if (newFiles.length === 0) return;
         selectedFiles = [...selectedFiles, ...newFiles];
         renderFileList();
+        await startCalculation();
     }
 
     function renderFileList() {
@@ -668,7 +684,7 @@
     };
 
     /* ── Calculate ──────────────────────── */
-    calculateBtn.addEventListener('click', async () => {
+    async function startCalculation() {
         if (selectedFiles.length === 0) { showToast('Please select files first', 'error'); return; }
         const agg = { 'A': {}, 'B': {}, 'TOTAL': {} };
         globalRawData = [];
@@ -713,7 +729,9 @@
             calculateBtn.disabled = false;
             loadingOverlay.classList.remove('active');
         }
-    });
+    }
+
+    calculateBtn.addEventListener('click', startCalculation);
 
     /* ── Read file ──────────────────────── */
     function readFile(file) {

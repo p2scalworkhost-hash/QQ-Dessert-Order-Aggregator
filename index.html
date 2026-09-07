@@ -396,6 +396,91 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
 
+        /* ── Tab switcher ────────────────────────── */
+        .view-tabs {
+            display: flex;
+            gap: .375rem;
+            margin-bottom: 1.5rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: .25rem;
+        }
+        .view-tab {
+            flex: 1;
+            font-family: 'Inter', sans-serif;
+            font-size: .8125rem;
+            font-weight: 600;
+            color: var(--text-2);
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            padding: .5rem .875rem;
+            cursor: pointer;
+            transition: all .15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .375rem;
+        }
+        .view-tab:hover { color: var(--text-1); background: rgba(0,0,0,.03); }
+        .view-tab.active {
+            background: var(--surface);
+            color: var(--text-1);
+            box-shadow: 0 1px 3px rgba(0,0,0,.08);
+        }
+        .view-tab svg { width: 14px; height: 14px; }
+
+        .view-panel { display: none; }
+        .view-panel.active { display: block; }
+
+        /* ── Month group ─────────────────────────── */
+        .month-group {
+            margin-bottom: 1.5rem;
+        }
+        .month-header {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            margin-bottom: .75rem;
+            padding: .625rem 1rem;
+            background: linear-gradient(135deg, #1A1210 0%, #2A2D3E 100%);
+            border-radius: 8px;
+            color: #fff;
+        }
+        .month-header-icon {
+            width: 32px; height: 32px;
+            background: rgba(255,255,255,.15);
+            border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .month-header-icon svg { width: 16px; height: 16px; color: #fff; }
+        .month-header-text h3 { font-size: .9375rem; font-weight: 700; }
+        .month-header-text p { font-size: .725rem; opacity: .7; margin-top: .1rem; }
+        .month-stat {
+            margin-left: auto;
+            text-align: right;
+        }
+        .month-stat-num { font-size: 1.25rem; font-weight: 800; }
+        .month-stat-label { font-size: .625rem; opacity: .6; text-transform: uppercase; letter-spacing: .06em; }
+
+        /* date column */
+        .dtable th.c-date { text-align: center; width: 100px; }
+        .c-date { text-align: center; }
+        .date-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .25rem;
+            font-size: .6875rem;
+            font-weight: 600;
+            color: var(--text-2);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: .15rem .5rem;
+            border-radius: 5px;
+            white-space: nowrap;
+        }
+
         /* ── Responsive ──────────────────────────── */
         @media (max-width: 500px) {
             .page-header { padding: 1rem 1.25rem; }
@@ -403,6 +488,7 @@
             .upload-card { padding: 1.125rem; }
             .btn-row { flex-direction: column; }
             .stat-strip { grid-template-columns: repeat(2, 1fr); }
+            .view-tabs { flex-direction: column; }
         }
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -491,6 +577,21 @@
             </div>
         </div>
 
+        <!-- View Tabs -->
+        <div class="view-tabs" id="view-tabs">
+            <button class="view-tab active" data-tab="daily" id="tab-daily">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z"/></svg>
+                รวม Zone (รายครั้ง)
+            </button>
+            <button class="view-tab" data-tab="monthly" id="tab-monthly">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+                รวมรายเดือน (Monthly)
+            </button>
+        </div>
+
+        <!-- Daily Panel -->
+        <div class="view-panel active" id="panel-daily">
+
         <!-- Zone A & B -->
         <div class="divider"><hr><span>By Zone</span><hr></div>
 
@@ -564,6 +665,15 @@
             </table>
         </div>
 
+        </div><!-- /panel-daily -->
+
+        <!-- Monthly Panel -->
+        <div class="view-panel" id="panel-monthly">
+            <div id="monthly-content">
+                <p style="color:var(--text-3);font-style:italic;text-align:center;padding:2rem;">ยังไม่มีข้อมูล — อัปโหลดไฟล์จากหลายวันเพื่อดูสรุปรายเดือน</p>
+            </div>
+        </div>
+
     </div><!-- /results -->
 </main>
 
@@ -576,9 +686,21 @@
     const exportReportBtn = document.getElementById('export-report-btn');
     const resultsDiv      = document.getElementById('results');
     const loadingOverlay  = document.getElementById('loading-overlay');
+    const monthlyContent  = document.getElementById('monthly-content');
 
     let selectedFiles = [];
     let globalRawData = [];
+    let monthlyAggData = {}; // { 'YYYY-MM': { A:{}, B:{}, TOTAL:{} } }
+
+    /* ── Tab Switching ─────────────────── */
+    document.querySelectorAll('.view-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+        });
+    });
 
     /* ── Zone Data ──────────────────────── */
     const ZONE_MAPPING = {
@@ -645,6 +767,57 @@
         requestAnimationFrame(run);
     }
 
+    /* ── InsertDate helpers ─────────────── */
+    const THAI_MONTHS = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    const EN_MONTHS = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    /**
+     * Parse InsertDate from either:
+     *   1) Numeric Excel serial date (Buddhist Era calendar — serial is shifted +543 years)
+     *   2) String like "14/8/2569 15:24:56" (d/m/yyyy BE format)
+     * Returns { dateStr: 'DD/MM/YYYY', monthKey: 'YYYY-MM', monthLabel: 'ส.ค. 2026 (Aug)' }
+     */
+    function parseInsertDate(rawValue) {
+        if (rawValue === undefined || rawValue === null || rawValue === '') return null;
+
+        let y, m, d;
+
+        if (typeof rawValue === 'number' && !isNaN(rawValue)) {
+            // Numeric serial: BE-shifted Excel serial date
+            // Excel epoch = Dec 30, 1899 (serial 0); serial 1 = Jan 1, 1900
+            // BE dates add 543 years ≈ 198327 days to the serial
+            const beOffset = 198327;
+            const ceSerial = rawValue - beOffset;
+            const epoch = new Date(Date.UTC(1899, 11, 30)); // Dec 30, 1899
+            const jsDate = new Date(epoch.getTime() + ceSerial * 86400000);
+            if (isNaN(jsDate.getTime())) return null;
+            y = jsDate.getUTCFullYear();
+            m = jsDate.getUTCMonth() + 1;
+            d = jsDate.getUTCDate();
+        } else if (typeof rawValue === 'string') {
+            // String format: "d/m/yyyy HH:MM:SS" in BE year
+            const match = rawValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+            if (!match) return null;
+            d = parseInt(match[1]);
+            m = parseInt(match[2]);
+            let yearRaw = parseInt(match[3]);
+            // Convert BE to CE: if year > 2400 it's BE; if 2-digit, add 2500 then subtract 543
+            if (yearRaw > 2400) yearRaw -= 543;
+            else if (yearRaw < 100) yearRaw = yearRaw + 2500 - 543; // e.g. 69 → 2569 → 2026
+            y = yearRaw;
+        } else {
+            return null;
+        }
+
+        // Validate ranges
+        if (y < 2000 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return null;
+
+        const dateStr = String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0') + '/' + y;
+        const monthKey = y + '-' + String(m).padStart(2,'0');
+        const monthLabel = THAI_MONTHS[m] + ' ' + y + ' (' + EN_MONTHS[m] + ')';
+        return { dateStr, monthKey, monthLabel, year: y, month: m };
+    }
+
     /* ── Drag & drop ────────────────────── */
     ['dragenter','dragover','dragleave','drop'].forEach(ev => {
         dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
@@ -690,6 +863,7 @@
         if (selectedFiles.length === 0) { showToast('Please select files first', 'error'); return; }
         const agg = { 'A': {}, 'B': {}, 'TOTAL': {} };
         globalRawData = [];
+        monthlyAggData = {};
         calculateBtn.disabled = true;
         loadingOverlay.classList.add('active');
         await new Promise(r => setTimeout(r, 60));
@@ -719,6 +893,29 @@
             animateCounter(document.getElementById('stat-zone-a'), zA);
             animateCounter(document.getElementById('stat-zone-b'), zB);
             animateCounter(document.getElementById('stat-sku'),    Object.keys(agg.TOTAL).length);
+
+            /* ── Monthly aggregation ── */
+            const monthlyRows = {}; // { 'YYYY-MM': rows[] }
+            const monthLabels = {}; // { 'YYYY-MM': 'ส.ค. 2026 (Aug)' }
+            globalRawData.forEach(row => {
+                const parsed = parseInsertDate(row['InsertDate']);
+                if (parsed) {
+                    row._parsedDate = parsed.dateStr;
+                    row._monthKey = parsed.monthKey;
+                    if (!monthlyRows[parsed.monthKey]) {
+                        monthlyRows[parsed.monthKey] = [];
+                        monthLabels[parsed.monthKey] = parsed.monthLabel;
+                    }
+                    monthlyRows[parsed.monthKey].push(row);
+                }
+            });
+            // Build monthly aggregation
+            Object.keys(monthlyRows).sort().forEach(mk => {
+                const mAgg = { 'A': {}, 'B': {}, 'TOTAL': {} };
+                processData(monthlyRows[mk], mAgg);
+                monthlyAggData[mk] = { agg: mAgg, label: monthLabels[mk], rowCount: monthlyRows[mk].length };
+            });
+            renderMonthlyView();
 
             showToast('Processed ' + selectedFiles.length + ' file' + (selectedFiles.length > 1 ? 's' : '') + ' successfully');
             setTimeout(() => resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
@@ -767,6 +964,74 @@
         return items;
     }
 
+    /* ── Detect HQ Stock Movement report (31-1.xlsx) ── */
+    function isHQMovementFile(wb) {
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', range: 0 });
+        if (raw.length < 3) return false;
+        const r0 = String(raw[0][0] || '').trim();
+        const r1col0 = String(raw[1][0] || '').trim();
+        // Header row 0 starts with "ข้อมูลทั่วไป" and row 1 starts with "สาขา"
+        return r0.includes('ข้อมูลทั่วไป') && r1col0.includes('สาขา');
+    }
+
+    /* ── Parse HQ Stock Movement report ── */
+    function parseHQMovementSheet(wb) {
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        const items = [];
+        // Pattern: section header "รหัสสินค้า: xxx" → HQ data row → subtotal row
+        // HQ data row: col[1]="HQ", col[3]=ItemCode, col[4]=ItemDesc, col[12]=transfer qty
+        for (let i = 2; i < raw.length; i++) {
+            const row = raw[i];
+            const branch = String(row[1] || '').trim();
+            if (branch !== 'HQ') continue;
+            const code = String(row[3] || '').trim();
+            const desc = String(row[4] || '').trim();
+            const transferQty = parseFloat(row[12]);
+            if (!code || !desc || isNaN(transferQty) || transferQty === 0) continue;
+            items.push({ ItemCode: code, ItemDesc: desc, Qty: transferQty, To: 'HQ_TRANSFER' });
+        }
+        return items;
+    }
+
+    /* ── Detect Stock Count report (31-7, 31-8) ── */
+    function isStockCountFile(wb) {
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', range: 0 });
+        for (let i = 0; i < Math.min(15, raw.length); i++) {
+            if (String(raw[i][0] || '').trim() === 'ตรวจนับสินค้า') return true;
+        }
+        return false;
+    }
+
+    /* ── Parse Stock Count report ── */
+    function parseStockCountSheet(wb) {
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        const items = [];
+        // Find header row containing "รหัสสินค้า" in col[0]
+        let dataStart = -1;
+        for (let i = 0; i < raw.length; i++) {
+            if (String(raw[i][0] || '').trim() === 'รหัสสินค้า') { dataStart = i + 1; break; }
+        }
+        if (dataStart < 0) return items;
+        // Category headers are single-word labels like DRY, FRH, FRT, CAN etc.
+        const categoryPattern = /^[A-Z]{2,5}$/;
+        for (let i = dataStart; i < raw.length; i++) {
+            const row = raw[i];
+            const code = String(row[0] || '').trim();
+            if (!code) continue;
+            // Skip category headers (e.g. "DRY", "FRH")
+            if (categoryPattern.test(code)) continue;
+            const desc = String(row[5] || '').trim();
+            const countQty = parseFloat(row[17]); // ยอดตรวจนับ
+            if (!desc || isNaN(countQty)) continue;
+            items.push({ ItemCode: code, ItemDesc: desc, Qty: countQty, To: 'HQ_STOCK' });
+        }
+        return items;
+    }
+
     /* ── Read file ──────────────────────── */
     function readFile(file) {
         return new Promise((resolve, reject) => {
@@ -774,7 +1039,13 @@
             r.onload = e => {
                 try {
                     const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                    if (isICSFile(file)) {
+                    if (isHQMovementFile(wb)) {
+                        showToast('ตรวจพบ: รายงานเคลื่อนไหวสินค้า HQ — ' + file.name);
+                        resolve(parseHQMovementSheet(wb));
+                    } else if (isStockCountFile(wb)) {
+                        showToast('ตรวจพบ: รายงานตรวจนับสินค้า — ' + file.name);
+                        resolve(parseStockCountSheet(wb));
+                    } else if (isICSFile(file)) {
                         resolve(parseICSSheet(wb));
                     } else {
                         resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' }));
@@ -794,6 +1065,14 @@
             const qty       = parseFloat(row['Qty']) || 0;
             const rawBranch = (row['To'] || '').toString().trim().toUpperCase();
             if (!itemCode || qty === 0) return;
+
+            // HQ-only entries (stock movement / stock count) → Grand Total only
+            if (rawBranch === 'HQ_TRANSFER' || rawBranch === 'HQ_STOCK') {
+                if (!agg.TOTAL[itemCode]) agg.TOTAL[itemCode] = { desc: itemDesc, qty: 0 };
+                agg.TOTAL[itemCode].qty += qty;
+                return;
+            }
+
             let branchCode = null, zone = null;
             for (const [key, code] of Object.entries(ZONE_MAPPING)) {
                 if (rawBranch.includes(key)) { branchCode = code; zone = ZONES.A.includes(code) ? 'A' : 'B'; break; }
@@ -820,16 +1099,151 @@
         sorted.forEach((item, i) => {
             const pct = max > 0 ? (item.qty / max) * 100 : 0;
             const tr = document.createElement('tr');
-            tr.innerHTML =
-                '<td class="c-no"><span class="row-no' + (i < 3 ? ' top' : '') + '">' + (i + 1) + '</span></td>' +
-                '<td class="row-name">' + item.desc + '</td>' +
-                '<td class="c-qty"><div class="qty-block">' +
+            // Build cells safely (avoid XSS from Excel cell data)
+            const tdNo = document.createElement('td'); tdNo.className = 'c-no';
+            const spanNo = document.createElement('span'); spanNo.className = 'row-no' + (i < 3 ? ' top' : ''); spanNo.textContent = i + 1;
+            tdNo.appendChild(spanNo);
+            const tdName = document.createElement('td'); tdName.className = 'row-name'; tdName.textContent = item.desc;
+            const tdQty = document.createElement('td'); tdQty.className = 'c-qty';
+            tdQty.innerHTML =
+                '<div class="qty-block">' +
                     '<span class="qty-num">' + item.qty.toLocaleString() + '</span>' +
                     '<div class="qty-bar"><div class="qty-bar-fill" style="width:' + pct + '%;background:' + barColor + ';transform:scaleX(0);"></div></div>' +
-                '</div></td>';
+                '</div>';
+            tr.appendChild(tdNo); tr.appendChild(tdName); tr.appendChild(tdQty);
             body.appendChild(tr);
         });
     }
+
+    /* ── Render table into element ──────── */
+    function renderTableInto(tbody, data, barColor) {
+        tbody.innerHTML = '';
+        const sorted = Object.values(data).sort((a, b) => b.qty - a.qty);
+        if (sorted.length === 0) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="3">No data for this zone.</td></tr>';
+            return;
+        }
+        const max = sorted[0].qty;
+        sorted.forEach((item, i) => {
+            const pct = max > 0 ? (item.qty / max) * 100 : 0;
+            const tr = document.createElement('tr');
+            const tdNo = document.createElement('td'); tdNo.className = 'c-no';
+            const spanNo = document.createElement('span'); spanNo.className = 'row-no' + (i < 3 ? ' top' : ''); spanNo.textContent = i + 1;
+            tdNo.appendChild(spanNo);
+            const tdName = document.createElement('td'); tdName.className = 'row-name'; tdName.textContent = item.desc;
+            const tdQty = document.createElement('td'); tdQty.className = 'c-qty';
+            tdQty.innerHTML =
+                '<div class="qty-block">' +
+                    '<span class="qty-num">' + item.qty.toLocaleString() + '</span>' +
+                    '<div class="qty-bar"><div class="qty-bar-fill" style="width:' + pct + '%;background:' + barColor + ';transform:scaleX(0);"></div></div>' +
+                '</div>';
+            tr.appendChild(tdNo); tr.appendChild(tdName); tr.appendChild(tdQty);
+            tbody.appendChild(tr);
+        });
+    }
+
+    /* ── Render Monthly View ───────────── */
+    function renderMonthlyView() {
+        const container = monthlyContent;
+        const months = Object.keys(monthlyAggData).sort();
+
+        if (months.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-3);font-style:italic;text-align:center;padding:2rem;">ยังไม่มีข้อมูล InsertDate — ไม่สามารถจัดกลุ่มรายเดือนได้</p>';
+            return;
+        }
+
+        container.innerHTML = '';
+
+        months.forEach(mk => {
+            const { agg, label, rowCount } = monthlyAggData[mk];
+            let totalQty = 0;
+            Object.values(agg.TOTAL).forEach(i => totalQty += i.qty);
+            let zoneAQty = 0, zoneBQty = 0;
+            Object.values(agg.A).forEach(i => zoneAQty += i.qty);
+            Object.values(agg.B).forEach(i => zoneBQty += i.qty);
+
+            const group = document.createElement('div');
+            group.className = 'month-group';
+
+            // Month header
+            group.innerHTML = `
+                <div class="month-header">
+                    <div class="month-header-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
+                    </div>
+                    <div class="month-header-text">
+                        <h3>${label}</h3>
+                        <p>${Object.keys(agg.TOTAL).length} รายการ · ${rowCount.toLocaleString()} แถว · Zone A: ${zoneAQty.toLocaleString()} · Zone B: ${zoneBQty.toLocaleString()}</p>
+                    </div>
+                    <div class="month-stat">
+                        <div class="month-stat-num">${totalQty.toLocaleString()}</div>
+                        <div class="month-stat-label">ชิ้นรวม</div>
+                    </div>
+                </div>
+            `;
+
+            // Zone grid
+            const zoneGrid = document.createElement('div');
+            zoneGrid.className = 'zone-grid';
+
+            // Zone A table
+            const tcardA = document.createElement('div');
+            tcardA.className = 'tcard';
+            tcardA.innerHTML = `
+                <div class="tcard-head">
+                    <div class="tcard-head-left">
+                        <span class="zone-pill zone-pill-a">A</span>
+                        <div><div class="tcard-title">Zone A</div></div>
+                    </div>
+                    <span class="item-count">${Object.keys(agg.A).length} items</span>
+                </div>
+                <table class="dtable"><thead><tr><th class="c-no">#</th><th class="c-name">Menu</th><th class="c-qty">Qty</th></tr></thead><tbody></tbody></table>
+            `;
+            renderTableInto(tcardA.querySelector('tbody'), agg.A, '#2563EB');
+            zoneGrid.appendChild(tcardA);
+
+            // Zone B table
+            const tcardB = document.createElement('div');
+            tcardB.className = 'tcard';
+            tcardB.innerHTML = `
+                <div class="tcard-head">
+                    <div class="tcard-head-left">
+                        <span class="zone-pill zone-pill-b">B</span>
+                        <div><div class="tcard-title">Zone B</div></div>
+                    </div>
+                    <span class="item-count">${Object.keys(agg.B).length} items</span>
+                </div>
+                <table class="dtable"><thead><tr><th class="c-no">#</th><th class="c-name">Menu</th><th class="c-qty">Qty</th></tr></thead><tbody></tbody></table>
+            `;
+            renderTableInto(tcardB.querySelector('tbody'), agg.B, '#16A34A');
+            zoneGrid.appendChild(tcardB);
+
+            group.appendChild(zoneGrid);
+
+            // Grand total table
+            const tcardTotal = document.createElement('div');
+            tcardTotal.className = 'tcard';
+            tcardTotal.style.marginBottom = '0';
+            tcardTotal.innerHTML = `
+                <div class="tcard-head">
+                    <div class="tcard-head-left">
+                        <span class="zone-pill zone-pill-gt">All</span>
+                        <div><div class="tcard-title">รวมทั้งหมด (${label})</div></div>
+                    </div>
+                    <span class="item-count">${Object.keys(agg.TOTAL).length} items</span>
+                </div>
+                <table class="dtable"><thead><tr><th class="c-no">#</th><th class="c-name">Menu</th><th class="c-qty">Qty</th></tr></thead><tbody></tbody></table>
+            `;
+            renderTableInto(tcardTotal.querySelector('tbody'), agg.TOTAL, '#7C3AED');
+            group.appendChild(tcardTotal);
+
+            container.appendChild(group);
+        });
+
+        // Animate bars after a short delay
+        setTimeout(() => container.querySelectorAll('.qty-bar-fill').forEach(b => b.style.transform = 'scaleX(1)'), 200);
+    }
+
 
     /* ── Export ─────────────────────────── */
     exportReportBtn.addEventListener('click', () => {
@@ -843,11 +1257,14 @@
             const S_CELL   = { border:BORDER, alignment:{horizontal:'center'} };
             const S_TEXT   = { border:BORDER, alignment:{horizontal:'left'} };
             const S_TOTAL  = { font:{bold:true}, fill:{fgColor:{rgb:'FFF2CC'}}, border:BORDER, alignment:{horizontal:'center'} };
+            const S_DATE   = { border:BORDER, alignment:{horizontal:'center'}, font:{sz:9, color:{rgb:'666666'}} };
+            const S_MONTH_HEADER = { font:{bold:true,sz:12,color:{rgb:'FFFFFF'}}, fill:{fgColor:{rgb:'1A1210'}}, alignment:{horizontal:'center',vertical:'center'}, border:BORDER };
 
-            function buildSheet(sheetName, branches, titleText) {
+            function buildSheet(sheetName, branches, titleText, sourceData) {
+                const data = sourceData || globalRawData;
                 const itemsMap = {};
                 const allBranches = branches === 'ALL' ? [...ZONES.A, ...ZONES.B] : branches;
-                globalRawData.forEach(row => {
+                data.forEach(row => {
                     const rawBranch = (row['To'] || '').toString().trim().toUpperCase();
                     const qty = parseFloat(row['Qty']) || 0;
                     const codeRaw = row['ItemCode'] || '';
@@ -883,9 +1300,97 @@
                 return ws;
             }
 
+            // Original sheets
             XLSX.utils.book_append_sheet(wb, buildSheet('Zone A',      ZONES.A, '\u0e41\u0e1a\u0e1a\u0e1f\u0e2d\u0e23\u0e4c\u0e21\u0e43\u0e1a\u0e2a\u0e31\u0e48\u0e07/\u0e2a\u0e48\u0e07\u0e02\u0e2d\u0e07\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e32\u0e02\u0e32\u0e23\u0e32\u0e22\u0e27\u0e31\u0e19 (QQ Dessert) \u0e42\u0e0b\u0e19 A'), 'Zone A');
             XLSX.utils.book_append_sheet(wb, buildSheet('Zone B',      ZONES.B, '\u0e41\u0e1a\u0e1a\u0e1f\u0e2d\u0e23\u0e4c\u0e21\u0e43\u0e1a\u0e2a\u0e31\u0e48\u0e07/\u0e2a\u0e48\u0e07\u0e02\u0e2d\u0e07\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e32\u0e02\u0e32\u0e23\u0e32\u0e22\u0e27\u0e31\u0e19 (QQ Dessert) \u0e42\u0e0b\u0e19 B'), 'Zone B');
             XLSX.utils.book_append_sheet(wb, buildSheet('Grand Total', 'ALL',   '\u0e41\u0e1a\u0e1a\u0e1f\u0e2d\u0e23\u0e4c\u0e21\u0e43\u0e1a\u0e2a\u0e31\u0e48\u0e07/\u0e2a\u0e48\u0e07\u0e02\u0e2d\u0e07\u0e40\u0e02\u0e49\u0e32\u0e2a\u0e32\u0e02\u0e32\u0e23\u0e32\u0e22\u0e27\u0e31\u0e19 (QQ Dessert) \u0e23\u0e27\u0e21\u0e17\u0e38\u0e01\u0e2a\u0e32\u0e02\u0e32'), 'Grand Total');
+
+            // Monthly summary sheets
+            const months = Object.keys(monthlyAggData).sort();
+            if (months.length > 0) {
+                // Build one combined monthly sheet with InsertDate
+                const monthlyWsData = [[{v:'สรุปรายเดือน — Monthly Summary',s:S_TITLE}],[{v:'Export: ' + dateStr,s:{font:{sz:10}}}],[]];
+                const monthlyHdr = [
+                    {v:'เดือน',s:S_MONTH_HEADER},
+                    {v:'ลำดับ',s:S_HEADER},
+                    {v:'รายการ',s:S_HEADER},
+                    {v:'รหัสสินค้า',s:S_HEADER},
+                    {v:'Zone A',s:S_HEADER},
+                    {v:'Zone B',s:S_HEADER},
+                    {v:'รวมทั้งหมด',s:S_HEADER}
+                ];
+                monthlyWsData.push(monthlyHdr);
+
+                months.forEach(mk => {
+                    const { agg, label } = monthlyAggData[mk];
+                    // Collect all item codes across both zones
+                    const allCodes = new Set([...Object.keys(agg.A), ...Object.keys(agg.B), ...Object.keys(agg.TOTAL)]);
+                    let idx = 1;
+                    const sortedCodes = [...allCodes].sort();
+                    sortedCodes.forEach(fullCode => {
+                        let code = fullCode;
+                        if (code.includes('-')) code = code.split('-')[1];
+                        const desc = (agg.TOTAL[fullCode] || agg.A[fullCode] || agg.B[fullCode] || {}).desc || '';
+                        const qtyA = agg.A[fullCode] ? agg.A[fullCode].qty : 0;
+                        const qtyB = agg.B[fullCode] ? agg.B[fullCode].qty : 0;
+                        const qtyTotal = agg.TOTAL[fullCode] ? agg.TOTAL[fullCode].qty : 0;
+                        monthlyWsData.push([
+                            {v: idx === 1 ? label : '', s: idx === 1 ? S_MONTH_HEADER : S_CELL},
+                            {v: idx++, s: S_CELL},
+                            {v: desc, s: S_TEXT},
+                            {v: code, s: S_CELL},
+                            {v: qtyA === 0 ? '-' : qtyA.toFixed(2), s: S_CELL},
+                            {v: qtyB === 0 ? '-' : qtyB.toFixed(2), s: S_CELL},
+                            {v: qtyTotal.toFixed(2), s: S_TOTAL}
+                        ]);
+                    });
+                    // Spacer row between months
+                    monthlyWsData.push([]);
+                });
+
+                const monthlyWs = XLSX.utils.aoa_to_sheet(monthlyWsData);
+                monthlyWs['!cols'] = [{wch:18},{wch:6},{wch:25},{wch:12},{wch:10},{wch:10},{wch:12}];
+                XLSX.utils.book_append_sheet(wb, monthlyWs, 'Monthly Summary');
+            }
+
+            // Raw data sheet with InsertDate
+            const rawWsData = [[{v:'ข้อมูลดิบ (Raw Data) พร้อม InsertDate',s:S_TITLE}],[{v:'Export: ' + dateStr,s:{font:{sz:10}}}],[]];
+            const rawHdr = [
+                {v:'ลำดับ',s:S_HEADER},
+                {v:'InsertDate',s:S_HEADER},
+                {v:'รหัสสินค้า',s:S_HEADER},
+                {v:'รายการ',s:S_HEADER},
+                {v:'จำนวน',s:S_HEADER},
+                {v:'หน่วย',s:S_HEADER},
+                {v:'สาขา (To)',s:S_HEADER},
+                {v:'จาก (From)',s:S_HEADER}
+            ];
+            rawWsData.push(rawHdr);
+            let rawIdx = 1;
+            globalRawData.forEach(row => {
+                const code = row['ItemCode'] || '';
+                const desc = row['ItemDesc'] || '';
+                const qty = parseFloat(row['Qty']) || 0;
+                const unit = row['UnitName'] || '';
+                const to = row['To'] || '';
+                const from = row['From'] || '';
+                if (!code || qty === 0) return;
+                const parsedDate = row._parsedDate || parseInsertDate(row['InsertDate'])?.dateStr || '-';
+                rawWsData.push([
+                    {v: rawIdx++, s: S_CELL},
+                    {v: parsedDate, s: S_DATE},
+                    {v: code, s: S_CELL},
+                    {v: desc, s: S_TEXT},
+                    {v: qty.toFixed(2), s: S_CELL},
+                    {v: unit, s: S_TEXT},
+                    {v: to, s: S_TEXT},
+                    {v: from, s: S_TEXT}
+                ]);
+            });
+            const rawWs = XLSX.utils.aoa_to_sheet(rawWsData);
+            rawWs['!cols'] = [{wch:6},{wch:12},{wch:14},{wch:25},{wch:10},{wch:14},{wch:18},{wch:10}];
+            XLSX.utils.book_append_sheet(wb, rawWs, 'Raw Data');
+
             XLSX.writeFile(wb, 'QQ_Dessert_Order_Report_' + new Date().toISOString().slice(0,10) + '.xlsx');
             showToast('Report exported successfully!');
         } catch (err) {
